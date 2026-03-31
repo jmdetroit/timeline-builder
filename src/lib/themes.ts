@@ -437,7 +437,7 @@ export const themes: Record<string, ThemeConfig> = {
       barGlow: false,
       barOpacity: 1.0,
       barStroke: true,
-      barStrokeColor: '#E8E8EE',
+      barStrokeColor: 'rgba(255,255,255,0.7)',
       barStrokeWidth: 1,
       bgPattern: 'none',
       gridStyle: 'solid',

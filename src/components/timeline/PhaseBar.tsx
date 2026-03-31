@@ -48,8 +48,8 @@ export default function PhaseBar({
   if (item.color) {
     fill = item.color;
   } else if (hasFrostSolid) {
-    // Solid frost: neutral grey bar, accent via underline/text only
-    fill = '#ECEDF2';
+    // Solid frost: gradient from transparent to frosty opaque
+    fill = `url(#bar-frost-solid-${colorIndex})`;
   } else if (hasFrost) {
     // Frost overlay: solid color as base (frost overlay added separately)
     fill = theme.colors.categories[colorIndex];
@@ -80,7 +80,7 @@ export default function PhaseBar({
       tabIndex={0}
     >
       {/* Shadow (only for non-glow themes) */}
-      {!effects.barGlow && (
+      {!effects.barGlow && !hasFrostSolid && (
         <rect
           x={x + 1}
           y={y + 1}
@@ -88,6 +88,19 @@ export default function PhaseBar({
           height={theme.itemHeight}
           rx={rx}
           fill="rgba(0,0,0,0.08)"
+        />
+      )}
+
+      {/* Frost-solid: soft shadow for bubble depth */}
+      {hasFrostSolid && (
+        <rect
+          x={x + 0.5}
+          y={y + 1}
+          width={barWidth}
+          height={theme.itemHeight}
+          rx={rx}
+          fill="rgba(0,0,0,0.04)"
+          filter="url(#frost-blur)"
         />
       )}
 

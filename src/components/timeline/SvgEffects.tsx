@@ -57,8 +57,32 @@ export default function SvgEffects({ theme, width, height }: SvgEffectsProps) {
             <stop offset="50%" stopColor={effects.frostColor || '#FFFFFF'} stopOpacity={0.78} />
             <stop offset="100%" stopColor={effects.frostColor || '#FFFFFF'} stopOpacity={0.6} />
           </linearGradient>
+          {/* Frost-solid gradient: transparent top → opaque frosty bottom (bubble feel) */}
+          <linearGradient
+            id={`bar-frost-solid-${i}`}
+            x1="0%" y1="0%" x2="0%" y2="100%"
+          >
+            <stop offset="0%" stopColor="#F0F0F6" stopOpacity={0.15} />
+            <stop offset="35%" stopColor="#E8E9F0" stopOpacity={0.4} />
+            <stop offset="70%" stopColor="#E2E3EC" stopOpacity={0.7} />
+            <stop offset="100%" stopColor="#DDDEE8" stopOpacity={0.88} />
+          </linearGradient>
         </React.Fragment>
       ))}
+
+      {/* ── Frost-solid blur filter for bubble effect ── */}
+      {effects.frostSolid && (
+        <filter id="frost-blur" x="-5%" y="-10%" width="110%" height="120%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="0.8" result="blur" />
+          <feComponentTransfer in="blur" result="soft">
+            <feFuncA type="linear" slope="0.95" intercept="0.05" />
+          </feComponentTransfer>
+          <feMerge>
+            <feMergeNode in="soft" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      )}
 
       {/* ── Glow filter (soft falloff to avoid harsh row edges) ── */}
       {effects.barGlow && (
