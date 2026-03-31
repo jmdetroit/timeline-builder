@@ -101,6 +101,11 @@ export interface ThemeEffects {
   // Special SVG filters
   useBlur?: boolean;
   useNoise?: boolean;
+
+  // Soulius / frost style
+  frostOverlay?: boolean;        // Frosted white overlay on colored bars
+  barTextUppercase?: boolean;    // All-caps bar labels
+  barLetterSpacing?: number;     // Letter spacing (kerning) for bar labels
 }
 
 export interface ThemeConfig {

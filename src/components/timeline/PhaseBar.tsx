@@ -39,14 +39,14 @@ export default function PhaseBar({
   const colorIndex = item.row % theme.colors.categories.length;
   const { effects } = theme;
 
-  const isSoulius = theme.name === 'soulius' || theme.name === 'custom' && effects.barGradient && (effects as Record<string, unknown>)._souliusStyle;
+  const hasFrost = !!effects.frostOverlay;
 
   // Determine fill
   let fill: string;
   if (item.color) {
     fill = item.color;
-  } else if (theme.name === 'soulius') {
-    // Soulius uses solid color as base (frost overlay added separately)
+  } else if (hasFrost) {
+    // Frost style uses solid color as base (frost overlay added separately)
     fill = theme.colors.categories[colorIndex];
   } else if (effects.barGradient) {
     const dir = effects.barGradientDirection === 'vertical' ? 'v' : 'h';
@@ -105,8 +105,8 @@ export default function PhaseBar({
         strokeWidth={isSelected ? 2 : effects.barStroke ? (effects.barStrokeWidth || 1) : 0}
       />
 
-      {/* Soulius frosted overlay: white frost on top of vivid color */}
-      {theme.name === 'soulius' && (
+      {/* Frosted overlay: white frost on top of vivid color */}
+      {hasFrost && (
         <rect
           x={x}
           y={y}
@@ -131,8 +131,8 @@ export default function PhaseBar({
         />
       )}
 
-      {/* Soulius: thin colored accent line at bottom of bar */}
-      {theme.name === 'soulius' && (
+      {/* Frost style: thin colored accent line at bottom of bar */}
+      {hasFrost && (
         <rect
           x={x + 6}
           y={y + theme.itemHeight - 5}
@@ -146,22 +146,28 @@ export default function PhaseBar({
       )}
 
       {/* Label */}
-      {barWidth > 40 && (
-        <text
-          x={x + 10}
-          y={y + theme.itemHeight / 2 + (theme.name === 'soulius' ? -1 : 1)}
-          fill={theme.name === 'soulius' ? theme.colors.categories[colorIndex] : '#FFFFFF'}
-          fontSize={11}
-          fontWeight={theme.name === 'soulius' ? 600 : 500}
-          fontFamily={theme.fontFamily}
-          dominantBaseline="middle"
-          filter={effects.textGlow ? 'url(#text-glow)' : undefined}
-        >
-          {item.label.length > barWidth / 7
-            ? item.label.substring(0, Math.floor(barWidth / 7)) + '...'
-            : item.label}
-        </text>
-      )}
+      {barWidth > 40 && (() => {
+        const labelText = item.label.length > barWidth / (effects.barLetterSpacing ? 10 : 7)
+          ? item.label.substring(0, Math.floor(barWidth / (effects.barLetterSpacing ? 10 : 7))) + '...'
+          : item.label;
+        const displayText = effects.barTextUppercase
+          ? labelText.toUpperCase().split('').join(String.fromCharCode(8202).repeat(effects.barLetterSpacing || 1))
+          : labelText;
+        return (
+          <text
+            x={x + 10}
+            y={y + theme.itemHeight / 2 + (hasFrost ? -1 : 1)}
+            fill={hasFrost ? theme.colors.categories[colorIndex] : '#FFFFFF'}
+            fontSize={hasFrost ? 9 : 11}
+            fontWeight={600}
+            fontFamily={theme.fontFamily}
+            dominantBaseline="middle"
+            filter={effects.textGlow ? 'url(#text-glow)' : undefined}
+          >
+            {displayText}
+          </text>
+        );
+      })()}
     </g>
   );
 }
