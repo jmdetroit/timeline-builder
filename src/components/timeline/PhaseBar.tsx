@@ -40,13 +40,18 @@ export default function PhaseBar({
   const { effects } = theme;
 
   const hasFrost = !!effects.frostOverlay;
+  const hasFrostSolid = !!effects.frostSolid;
+  const isFrostStyle = hasFrost || hasFrostSolid;
 
   // Determine fill
   let fill: string;
   if (item.color) {
     fill = item.color;
+  } else if (hasFrostSolid) {
+    // Solid frost: neutral grey bar, accent via underline/text only
+    fill = '#ECEDF2';
   } else if (hasFrost) {
-    // Frost style uses solid color as base (frost overlay added separately)
+    // Frost overlay: solid color as base (frost overlay added separately)
     fill = theme.colors.categories[colorIndex];
   } else if (effects.barGradient) {
     const dir = effects.barGradientDirection === 'vertical' ? 'v' : 'h';
@@ -105,7 +110,7 @@ export default function PhaseBar({
         strokeWidth={isSelected ? 2 : effects.barStroke ? (effects.barStrokeWidth || 1) : 0}
       />
 
-      {/* Frosted overlay: white frost on top of vivid color */}
+      {/* Frosted overlay: tinted frost on top of vivid color (frostOverlay only) */}
       {hasFrost && (
         <rect
           x={x}
@@ -132,7 +137,7 @@ export default function PhaseBar({
       )}
 
       {/* Frost style: thin colored accent line at bottom of bar */}
-      {hasFrost && (
+      {isFrostStyle && (
         <rect
           x={x + 6}
           y={y + theme.itemHeight - 5}
@@ -140,7 +145,7 @@ export default function PhaseBar({
           height={2.5}
           rx={1.25}
           fill={theme.colors.categories[colorIndex]}
-          opacity={0.7}
+          opacity={hasFrostSolid ? 0.85 : 0.7}
           pointerEvents="none"
         />
       )}
@@ -156,9 +161,9 @@ export default function PhaseBar({
         return (
           <text
             x={x + 10}
-            y={y + theme.itemHeight / 2 + (hasFrost ? -1 : 1)}
-            fill={hasFrost ? theme.colors.categories[colorIndex] : '#FFFFFF'}
-            fontSize={hasFrost ? 9 : 11}
+            y={y + theme.itemHeight / 2 + (isFrostStyle ? -1 : 1)}
+            fill={isFrostStyle ? theme.colors.categories[colorIndex] : '#FFFFFF'}
+            fontSize={isFrostStyle ? 9 : 11}
             fontWeight={600}
             fontFamily={theme.fontFamily}
             dominantBaseline="middle"

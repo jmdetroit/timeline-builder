@@ -11,6 +11,7 @@ export type ThemeName =
   | 'flat'
   | 'neon'
   | 'soulius'
+  | 'jmdetroit'
   | 'custom';
 export type ItemType = 'phase' | 'milestone' | 'task';
 
@@ -102,8 +103,10 @@ export interface ThemeEffects {
   useBlur?: boolean;
   useNoise?: boolean;
 
-  // Soulius / frost style
-  frostOverlay?: boolean;        // Frosted white overlay on colored bars
+  // Frost styles
+  frostOverlay?: boolean;        // Frosted white overlay on colored bars (color bleeds through)
+  frostSolid?: boolean;          // Solid grey frost bars (no color bleed, accent via underline/text only)
+  frostColor?: string;           // Frost tint color (default white)
   barTextUppercase?: boolean;    // All-caps bar labels
   barLetterSpacing?: number;     // Letter spacing (kerning) for bar labels
 }
