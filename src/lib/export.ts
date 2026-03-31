@@ -45,13 +45,48 @@ export function exportTimelineSvg(svgElement: SVGSVGElement): string {
 
   // Get viewBox dimensions for width/height attributes
   const viewBox = clone.getAttribute('viewBox');
+  let vbWidth = 1200;
+  let vbHeight = 600;
   if (viewBox) {
     const parts = viewBox.split(' ').map(Number);
     if (parts.length === 4) {
-      clone.setAttribute('width', parts[2].toString());
-      clone.setAttribute('height', parts[3].toString());
+      vbWidth = parts[2];
+      vbHeight = parts[3];
+      clone.setAttribute('width', vbWidth.toString());
+      clone.setAttribute('height', vbHeight.toString());
     }
   }
+
+  // Add rounded-corner clip path so the export looks like the card in the editor
+  const radius = 12;
+  const ns = 'http://www.w3.org/2000/svg';
+  let defs = clone.querySelector('defs');
+  if (!defs) {
+    defs = document.createElementNS(ns, 'defs');
+    clone.insertBefore(defs, clone.firstChild);
+  }
+  const clipPath = document.createElementNS(ns, 'clipPath');
+  clipPath.setAttribute('id', 'export-rounded-clip');
+  const clipRect = document.createElementNS(ns, 'rect');
+  clipRect.setAttribute('x', '0');
+  clipRect.setAttribute('y', '0');
+  clipRect.setAttribute('width', vbWidth.toString());
+  clipRect.setAttribute('height', vbHeight.toString());
+  clipRect.setAttribute('rx', radius.toString());
+  clipRect.setAttribute('ry', radius.toString());
+  clipPath.appendChild(clipRect);
+  defs.appendChild(clipPath);
+
+  // Wrap all content (except defs) in a clipped group
+  const wrapper = document.createElementNS(ns, 'g');
+  wrapper.setAttribute('clip-path', 'url(#export-rounded-clip)');
+  const children = Array.from(clone.childNodes);
+  for (const child of children) {
+    if (child !== defs) {
+      wrapper.appendChild(child);
+    }
+  }
+  clone.appendChild(wrapper);
 
   // Serialize to string
   const serializer = new XMLSerializer();
