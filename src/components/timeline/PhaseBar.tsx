@@ -48,8 +48,8 @@ export default function PhaseBar({
   if (item.color) {
     fill = item.color;
   } else if (hasFrostSolid) {
-    // Solid frost: gradient from transparent to frosty opaque
-    fill = `url(#bar-frost-solid-${colorIndex})`;
+    // Neumorphic: solid near-white
+    fill = '#E8E8EE';
   } else if (hasFrost) {
     // Frost overlay: solid color as base (frost overlay added separately)
     fill = theme.colors.categories[colorIndex];
@@ -79,7 +79,7 @@ export default function PhaseBar({
       role="button"
       tabIndex={0}
     >
-      {/* Shadow (only for non-glow themes) */}
+      {/* Shadow (only for non-glow, non-neumorphic themes) */}
       {!effects.barGlow && !hasFrostSolid && (
         <rect
           x={x + 1}
@@ -91,16 +91,29 @@ export default function PhaseBar({
         />
       )}
 
-      {/* Frost-solid: soft shadow for bubble depth */}
+      {/* Neumorphic: dark shadow (bottom-right) */}
       {hasFrostSolid && (
         <rect
-          x={x + 0.5}
-          y={y + 1}
+          x={x + 2}
+          y={y + 2}
           width={barWidth}
           height={theme.itemHeight}
           rx={rx}
-          fill="rgba(0,0,0,0.04)"
-          filter="url(#frost-blur)"
+          fill="rgba(174,174,192,0.25)"
+          filter="url(#neu-shadow)"
+        />
+      )}
+
+      {/* Neumorphic: light highlight (top-left) */}
+      {hasFrostSolid && (
+        <rect
+          x={x - 1.5}
+          y={y - 1.5}
+          width={barWidth}
+          height={theme.itemHeight}
+          rx={rx}
+          fill="rgba(255,255,255,0.8)"
+          filter="url(#neu-highlight)"
         />
       )}
 

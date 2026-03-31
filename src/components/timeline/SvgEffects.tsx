@@ -70,18 +70,16 @@ export default function SvgEffects({ theme, width, height }: SvgEffectsProps) {
         </React.Fragment>
       ))}
 
-      {/* ── Frost-solid blur filter for bubble effect ── */}
+      {/* ── Neumorphic shadow filters ── */}
       {effects.frostSolid && (
-        <filter id="frost-blur" x="-5%" y="-10%" width="110%" height="120%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="0.8" result="blur" />
-          <feComponentTransfer in="blur" result="soft">
-            <feFuncA type="linear" slope="0.95" intercept="0.05" />
-          </feComponentTransfer>
-          <feMerge>
-            <feMergeNode in="soft" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
+        <>
+          <filter id="neu-shadow" x="-10%" y="-10%" width="130%" height="130%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="3" />
+          </filter>
+          <filter id="neu-highlight" x="-10%" y="-10%" width="130%" height="130%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" />
+          </filter>
+        </>
       )}
 
       {/* ── Glow filter (soft falloff to avoid harsh row edges) ── */}
