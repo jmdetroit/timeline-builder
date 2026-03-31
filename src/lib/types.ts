@@ -10,6 +10,7 @@ export type ThemeName =
   | 'y2k'
   | 'flat'
   | 'neon'
+  | 'soulius'
   | 'custom';
 export type ItemType = 'phase' | 'milestone' | 'task';
 

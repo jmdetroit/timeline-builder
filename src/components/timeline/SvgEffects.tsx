@@ -48,6 +48,15 @@ export default function SvgEffects({ theme, width, height }: SvgEffectsProps) {
             <stop offset="60%" stopColor={color} stopOpacity={0.6} />
             <stop offset="100%" stopColor={darken(color, 15)} stopOpacity={0.8} />
           </linearGradient>
+          {/* Soulius frosted overlay: white frost on top of color */}
+          <linearGradient
+            id={`bar-frost-${i}`}
+            x1="0%" y1="0%" x2="0%" y2="100%"
+          >
+            <stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.88} />
+            <stop offset="45%" stopColor="#FFFFFF" stopOpacity={0.72} />
+            <stop offset="100%" stopColor="#FFFFFF" stopOpacity={0.55} />
+          </linearGradient>
         </React.Fragment>
       ))}
 

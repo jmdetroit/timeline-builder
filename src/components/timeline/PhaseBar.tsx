@@ -39,10 +39,15 @@ export default function PhaseBar({
   const colorIndex = item.row % theme.colors.categories.length;
   const { effects } = theme;
 
+  const isSoulius = theme.name === 'soulius' || theme.name === 'custom' && effects.barGradient && (effects as Record<string, unknown>)._souliusStyle;
+
   // Determine fill
   let fill: string;
   if (item.color) {
     fill = item.color;
+  } else if (theme.name === 'soulius') {
+    // Soulius uses solid color as base (frost overlay added separately)
+    fill = theme.colors.categories[colorIndex];
   } else if (effects.barGradient) {
     const dir = effects.barGradientDirection === 'vertical' ? 'v' : 'h';
     if (theme.name === 'glass') {
@@ -100,6 +105,19 @@ export default function PhaseBar({
         strokeWidth={isSelected ? 2 : effects.barStroke ? (effects.barStrokeWidth || 1) : 0}
       />
 
+      {/* Soulius frosted overlay: white frost on top of vivid color */}
+      {theme.name === 'soulius' && (
+        <rect
+          x={x}
+          y={y}
+          width={barWidth}
+          height={theme.itemHeight}
+          rx={rx}
+          fill={`url(#bar-frost-${colorIndex})`}
+          pointerEvents="none"
+        />
+      )}
+
       {/* Inner highlight overlay for 3D effect */}
       {effects.barInnerShadow && (
         <rect
@@ -113,14 +131,28 @@ export default function PhaseBar({
         />
       )}
 
+      {/* Soulius: thin colored accent line at bottom of bar */}
+      {theme.name === 'soulius' && (
+        <rect
+          x={x + 6}
+          y={y + theme.itemHeight - 5}
+          width={barWidth - 12}
+          height={2.5}
+          rx={1.25}
+          fill={theme.colors.categories[colorIndex]}
+          opacity={0.7}
+          pointerEvents="none"
+        />
+      )}
+
       {/* Label */}
       {barWidth > 40 && (
         <text
           x={x + 10}
-          y={y + theme.itemHeight / 2 + 1}
-          fill="#FFFFFF"
+          y={y + theme.itemHeight / 2 + (theme.name === 'soulius' ? -1 : 1)}
+          fill={theme.name === 'soulius' ? theme.colors.categories[colorIndex] : '#FFFFFF'}
           fontSize={11}
-          fontWeight={500}
+          fontWeight={theme.name === 'soulius' ? 600 : 500}
           fontFamily={theme.fontFamily}
           dominantBaseline="middle"
           filter={effects.textGlow ? 'url(#text-glow)' : undefined}
