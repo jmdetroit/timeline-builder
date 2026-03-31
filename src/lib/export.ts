@@ -141,3 +141,140 @@ export function importProjectFromJson(json: string): { items: TimelineItem[]; se
     return null;
   }
 }
+
+// ── CSV Export/Import ──
+
+function escapeCsvField(value: string): string {
+  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+const CSV_HEADERS = ['type', 'label', 'description', 'startDate', 'endDate', 'row'] as const;
+
+export function exportProjectAsCsv(items: TimelineItem[], settings: TimelineSettings): string {
+  const headerRow = CSV_HEADERS.join(',');
+  const dataRows = items.map((item) => {
+    const rowLabel = settings.rowLabels[item.row] || `Row ${item.row + 1}`;
+    return [
+      item.type,
+      escapeCsvField(item.label),
+      escapeCsvField(item.description || ''),
+      item.startDate,
+      item.endDate || '',
+      escapeCsvField(rowLabel),
+    ].join(',');
+  });
+  return [headerRow, ...dataRows].join('\n');
+}
+
+export function downloadCsv(csv: string, filename: string) {
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = url;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export function generateCsvTemplate(): string {
+  const headerRow = CSV_HEADERS.join(',');
+  const sampleRows = [
+    'phase,Market Research,,2025-01-15,2025-03-15,Strategy',
+    'phase,Roadmap Planning,,2025-02-01,2025-04-30,Strategy',
+    'milestone,Strategy Approved,,2025-03-31,,Strategy',
+    'phase,UX Research,,2025-03-01,2025-05-15,Design',
+    'phase,UI Design Sprint,,2025-04-01,2025-06-30,Design',
+    'task,Backend Architecture,,2025-04-15,2025-07-31,Development',
+    'task,Frontend Development,,2025-06-01,2025-09-30,Development',
+    'milestone,Beta Launch,,2025-08-15,,Launch',
+    'phase,Beta Program,,2025-08-15,2025-10-31,Launch',
+  ];
+  return [headerRow, ...sampleRows].join('\n');
+}
+
+function parseCsvLine(line: string): string[] {
+  const fields: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else if (ch === '"') {
+        inQuotes = false;
+      } else {
+        current += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ',') {
+        fields.push(current.trim());
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+  }
+  fields.push(current.trim());
+  return fields;
+}
+
+export function importProjectFromCsv(csv: string): { items: Omit<TimelineItem, 'id'>[]; rowLabels: string[] } | null {
+  try {
+    const lines = csv.split(/\r?\n/).filter((l) => l.trim());
+    if (lines.length < 2) return null;
+
+    // Parse header to find column indices
+    const header = parseCsvLine(lines[0]).map((h) => h.toLowerCase().trim());
+    const idx = {
+      type: header.indexOf('type'),
+      label: header.indexOf('label'),
+      description: header.indexOf('description'),
+      startDate: header.indexOf('startdate'),
+      endDate: header.indexOf('enddate'),
+      row: header.indexOf('row'),
+    };
+
+    if (idx.type === -1 || idx.label === -1 || idx.startDate === -1) return null;
+
+    // Collect unique row labels in order of appearance
+    const rowLabels: string[] = [];
+    const items: Omit<TimelineItem, 'id'>[] = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const fields = parseCsvLine(lines[i]);
+      if (fields.length < 3) continue;
+
+      const type = (fields[idx.type] || 'phase') as TimelineItem['type'];
+      if (!['phase', 'task', 'milestone'].includes(type)) continue;
+
+      const label = fields[idx.label];
+      if (!label) continue;
+
+      const rowName = idx.row !== -1 ? fields[idx.row] || 'Default' : 'Default';
+      if (!rowLabels.includes(rowName)) rowLabels.push(rowName);
+      const rowIndex = rowLabels.indexOf(rowName);
+
+      items.push({
+        type,
+        label,
+        description: idx.description !== -1 ? fields[idx.description] || undefined : undefined,
+        startDate: fields[idx.startDate],
+        endDate: idx.endDate !== -1 ? fields[idx.endDate] || undefined : undefined,
+        row: rowIndex,
+      });
+    }
+
+    return { items, rowLabels };
+  } catch {
+    return null;
+  }
+}

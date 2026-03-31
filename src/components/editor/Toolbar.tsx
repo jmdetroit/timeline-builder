@@ -3,8 +3,8 @@
 import React, { useRef, useState } from 'react';
 import { useTimelineStore } from '@/lib/store';
 import { themes } from '@/lib/themes';
-import { ViewMode, ThemeName } from '@/lib/types';
-import { exportTimelineSvg, downloadSvg, exportTimelinePng, exportProjectAsJson, downloadJson, importProjectFromJson } from '@/lib/export';
+import { ViewMode, ThemeName, TimelineItem } from '@/lib/types';
+import { exportTimelineSvg, downloadSvg, exportTimelinePng, exportProjectAsJson, downloadJson, importProjectFromJson, exportProjectAsCsv, downloadCsv, generateCsvTemplate, importProjectFromCsv } from '@/lib/export';
 import { templates } from '@/lib/sample-data';
 import {
   Calendar,
@@ -16,6 +16,7 @@ import {
   FileJson,
   Image,
   FileCode,
+  FileSpreadsheet,
   LayoutTemplate,
   Trash2,
   Pipette,
@@ -41,6 +42,8 @@ export default function Toolbar({ timelineRef, svgRef }: ToolbarProps) {
   const [showTemplates, setShowTemplates] = useState(false);
   const [showThemeDropdown, setShowThemeDropdown] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const csvFileInputRef = useRef<HTMLInputElement>(null);
+  const [showImport, setShowImport] = useState(false);
 
   const viewOptions: { value: ViewMode; label: string; icon: React.ReactNode }[] = [
     { value: 'monthly', label: 'Monthly', icon: <CalendarDays size={14} /> },
@@ -85,8 +88,44 @@ export default function Toolbar({ timelineRef, svgRef }: ToolbarProps) {
 
   const handleExportJson = () => {
     const json = exportProjectAsJson(items, settings);
-    downloadJson(json, `timeline-${settings.title.toLowerCase().replace(/\s+/g, '-')}.json`);
+    downloadJson(json, `timeline-${slugTitle}.json`);
     setShowExport(false);
+  };
+
+  const handleExportCsv = () => {
+    const csv = exportProjectAsCsv(items, settings);
+    downloadCsv(csv, `${slugTitle}.csv`);
+    setShowExport(false);
+  };
+
+  const handleDownloadCsvTemplate = () => {
+    const csv = generateCsvTemplate();
+    downloadCsv(csv, 'timeline-template.csv');
+    setShowImport(false);
+  };
+
+  const handleImportCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = importProjectFromCsv(reader.result as string);
+      if (result) {
+        const newSettings = {
+          ...settings,
+          rowLabels: result.rowLabels,
+        };
+        // Generate IDs for imported items
+        const itemsWithIds = result.items.map((item, i) => ({
+          ...item,
+          id: `csv-${Date.now()}-${i}`,
+        }));
+        loadProject(itemsWithIds as TimelineItem[], newSettings);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+    setShowImport(false);
   };
 
   const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -99,6 +138,7 @@ export default function Toolbar({ timelineRef, svgRef }: ToolbarProps) {
     };
     reader.readAsText(file);
     e.target.value = '';
+    setShowImport(false);
   };
 
   const handleLoadTemplate = (key: string) => {
@@ -207,20 +247,45 @@ export default function Toolbar({ timelineRef, svgRef }: ToolbarProps) {
       <div className="toolbar-spacer" />
 
       {/* Import */}
-      <button
-        className="toolbar-btn"
-        onClick={() => fileInputRef.current?.click()}
-        title="Import JSON"
-      >
-        <Upload size={14} />
-        <span>Import</span>
-      </button>
+      <div className="toolbar-group relative">
+        <button
+          className="toolbar-btn"
+          onClick={() => setShowImport(!showImport)}
+        >
+          <Upload size={14} />
+          <span>Import</span>
+        </button>
+        {showImport && (
+          <div className="dropdown-menu right">
+            <button className="dropdown-item" onClick={() => { fileInputRef.current?.click(); }}>
+              <FileJson size={14} />
+              Import JSON
+            </button>
+            <button className="dropdown-item" onClick={() => { csvFileInputRef.current?.click(); }}>
+              <FileSpreadsheet size={14} />
+              Import CSV
+            </button>
+            <div className="dropdown-divider" />
+            <button className="dropdown-item" onClick={handleDownloadCsvTemplate}>
+              <Download size={14} />
+              Download CSV Template
+            </button>
+          </div>
+        )}
+      </div>
       <input
         ref={fileInputRef}
         type="file"
         accept=".json"
         className="hidden"
         onChange={handleImportJson}
+      />
+      <input
+        ref={csvFileInputRef}
+        type="file"
+        accept=".csv"
+        className="hidden"
+        onChange={handleImportCsv}
       />
 
       {/* Export */}
@@ -241,6 +306,10 @@ export default function Toolbar({ timelineRef, svgRef }: ToolbarProps) {
             <button className="dropdown-item" onClick={handleExportPng}>
               <Image size={14} />
               Export as PNG (2x)
+            </button>
+            <button className="dropdown-item" onClick={handleExportCsv}>
+              <FileSpreadsheet size={14} />
+              Export as CSV
             </button>
             <button className="dropdown-item" onClick={handleExportJson}>
               <FileJson size={14} />
