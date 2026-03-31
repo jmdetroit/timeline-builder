@@ -32,6 +32,7 @@ interface TimelineState {
   setShowThemeCustomizer: (show: boolean) => void;
   updateCustomThemeColor: (key: keyof ThemeColors, value: string) => void;
   updateCustomThemeCategoryColor: (index: number, value: string) => void;
+  updateCustomThemeFont: (key: 'fontFamily' | 'headingFont', value: string) => void;
   initCustomThemeFrom: (themeName: string) => void;
 
   // Actions - Rows
@@ -110,6 +111,7 @@ export const useTimelineStore = create<TimelineState>((set) => ({
         ...state.customTheme,
         colors: { ...state.customTheme.colors, [key]: value },
       },
+      settings: { ...state.settings, theme: 'custom' as ThemeName },
     })),
 
   updateCustomThemeCategoryColor: (index, value) =>
@@ -121,8 +123,18 @@ export const useTimelineStore = create<TimelineState>((set) => ({
           ...state.customTheme,
           colors: { ...state.customTheme.colors, categories: cats },
         },
+        settings: { ...state.settings, theme: 'custom' as ThemeName },
       };
     }),
+
+  updateCustomThemeFont: (key, value) =>
+    set((state) => ({
+      customTheme: {
+        ...state.customTheme,
+        [key]: value,
+      },
+      settings: { ...state.settings, theme: 'custom' as ThemeName },
+    })),
 
   initCustomThemeFrom: (themeName) =>
     set((state) => {

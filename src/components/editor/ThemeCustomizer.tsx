@@ -4,7 +4,22 @@ import React from 'react';
 import { useTimelineStore } from '@/lib/store';
 import { ThemeColors } from '@/lib/types';
 import { themes } from '@/lib/themes';
-import { X, Copy, Palette } from 'lucide-react';
+import { X, Copy, Palette, Type } from 'lucide-react';
+
+const fontOptions = [
+  { label: 'Inter', value: "'Inter', system-ui, -apple-system, sans-serif" },
+  { label: 'Segoe UI', value: "'Segoe UI', system-ui, -apple-system, sans-serif" },
+  { label: 'Helvetica Neue', value: "'SF Pro Display', 'Helvetica Neue', system-ui, sans-serif" },
+  { label: 'Georgia', value: "'Georgia', 'Times New Roman', serif" },
+  { label: 'Trebuchet MS', value: "'Trebuchet MS', 'Arial', sans-serif" },
+  { label: 'Courier New', value: "'Courier New', 'Consolas', monospace" },
+  { label: 'Arial', value: "'Arial', 'Helvetica', sans-serif" },
+  { label: 'Verdana', value: "'Verdana', 'Geneva', sans-serif" },
+  { label: 'Tahoma', value: "'Tahoma', 'Geneva', sans-serif" },
+  { label: 'Palatino', value: "'Palatino Linotype', 'Book Antiqua', 'Palatino', serif" },
+  { label: 'Garamond', value: "'Garamond', 'Times New Roman', serif" },
+  { label: 'Lucida Console', value: "'Lucida Console', 'Monaco', monospace" },
+];
 
 // Color fields to expose in the customizer, grouped
 const colorGroups: { label: string; keys: { key: keyof ThemeColors; label: string }[] }[] = [
@@ -49,6 +64,7 @@ export default function ThemeCustomizer() {
   const setShowThemeCustomizer = useTimelineStore((s) => s.setShowThemeCustomizer);
   const updateCustomThemeColor = useTimelineStore((s) => s.updateCustomThemeColor);
   const updateCustomThemeCategoryColor = useTimelineStore((s) => s.updateCustomThemeCategoryColor);
+  const updateCustomThemeFont = useTimelineStore((s) => s.updateCustomThemeFont);
   const initCustomThemeFrom = useTimelineStore((s) => s.initCustomThemeFrom);
   const settings = useTimelineStore((s) => s.settings);
 
@@ -87,6 +103,49 @@ export default function ThemeCustomizer() {
               <span className="preset-name">{t.label}</span>
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Font pickers */}
+      <div className="customizer-section">
+        <div className="customizer-label"><Type size={12} /> Fonts</div>
+        <div className="font-picker-grid">
+          <div className="font-picker-field">
+            <label className="color-field-label">Heading Font</label>
+            <select
+              className="font-select"
+              value={fontOptions.find(f => customTheme.headingFont.includes(f.label.replace(/'/g, '')))?.value || customTheme.headingFont}
+              onChange={(e) => updateCustomThemeFont('headingFont', e.target.value)}
+              style={{ fontFamily: customTheme.headingFont }}
+            >
+              {fontOptions.map((f) => (
+                <option key={f.label} value={f.value} style={{ fontFamily: f.value }}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+            <span className="font-preview" style={{ fontFamily: customTheme.headingFont, fontWeight: 700 }}>
+              {settings.title || 'Timeline Title'}
+            </span>
+          </div>
+          <div className="font-picker-field">
+            <label className="color-field-label">Body Font</label>
+            <select
+              className="font-select"
+              value={fontOptions.find(f => customTheme.fontFamily.includes(f.label.replace(/'/g, '')))?.value || customTheme.fontFamily}
+              onChange={(e) => updateCustomThemeFont('fontFamily', e.target.value)}
+              style={{ fontFamily: customTheme.fontFamily }}
+            >
+              {fontOptions.map((f) => (
+                <option key={f.label} value={f.value} style={{ fontFamily: f.value }}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+            <span className="font-preview" style={{ fontFamily: customTheme.fontFamily }}>
+              Strategy, Design, Development
+            </span>
+          </div>
         </div>
       </div>
 
