@@ -43,13 +43,16 @@ export default function PhaseBar({
   const hasFrostSolid = !!effects.frostSolid;
   const isFrostStyle = hasFrost || hasFrostSolid;
 
+  // The accent color used for underline + label in frost styles
+  const accentColor = item.color || theme.colors.categories[colorIndex];
+
   // Determine fill
   let fill: string;
-  if (item.color) {
+  if (hasFrostSolid) {
+    // Solid frost: always use theme surface for the bar, accent goes to underline
+    fill = theme.colors.surface;
+  } else if (item.color) {
     fill = item.color;
-  } else if (hasFrostSolid) {
-    // Neumorphic: solid near-white
-    fill = '#E8E8EE';
   } else if (hasFrost) {
     // Frost overlay: solid color as base (frost overlay added separately)
     fill = theme.colors.categories[colorIndex];
@@ -170,7 +173,7 @@ export default function PhaseBar({
           width={barWidth - 12}
           height={2.5}
           rx={1.25}
-          fill={theme.colors.categories[colorIndex]}
+          fill={accentColor}
           opacity={hasFrostSolid ? 0.85 : 0.7}
           pointerEvents="none"
         />
@@ -188,7 +191,7 @@ export default function PhaseBar({
           <text
             x={x + 10}
             y={y + theme.itemHeight / 2 + (isFrostStyle ? -1 : 1)}
-            fill={isFrostStyle ? theme.colors.categories[colorIndex] : '#FFFFFF'}
+            fill={isFrostStyle ? accentColor : '#FFFFFF'}
             fontSize={isFrostStyle ? 9 : 11}
             fontWeight={600}
             fontFamily={theme.fontFamily}

@@ -189,6 +189,15 @@ function escapeCsvField(value: string): string {
 const CSV_HEADERS = ['type', 'label', 'description', 'startDate', 'endDate', 'row'] as const;
 
 export function exportProjectAsCsv(items: TimelineItem[], settings: TimelineSettings): string {
+  // Metadata lines (prefixed with #) to preserve project settings
+  const meta = [
+    `# title,${escapeCsvField(settings.title)}`,
+    `# subtitle,${escapeCsvField(settings.subtitle || '')}`,
+    `# startDate,${settings.startDate}`,
+    `# endDate,${settings.endDate}`,
+    `# theme,${settings.theme}`,
+    `# view,${settings.view}`,
+  ];
   const headerRow = CSV_HEADERS.join(',');
   const dataRows = items.map((item) => {
     const rowLabel = settings.rowLabels[item.row] || `Row ${item.row + 1}`;
@@ -201,7 +210,7 @@ export function exportProjectAsCsv(items: TimelineItem[], settings: TimelineSett
       escapeCsvField(rowLabel),
     ].join(',');
   });
-  return [headerRow, ...dataRows].join('\n');
+  return [...meta, headerRow, ...dataRows].join('\n');
 }
 
 export function downloadCsv(csv: string, filename: string) {
@@ -262,13 +271,51 @@ function parseCsvLine(line: string): string[] {
   return fields;
 }
 
-export function importProjectFromCsv(csv: string): { items: Omit<TimelineItem, 'id'>[]; rowLabels: string[] } | null {
+export interface CsvImportResult {
+  items: Omit<TimelineItem, 'id'>[];
+  rowLabels: string[];
+  meta: {
+    title?: string;
+    subtitle?: string;
+    startDate?: string;
+    endDate?: string;
+    theme?: string;
+    view?: string;
+  };
+}
+
+export function importProjectFromCsv(csv: string): CsvImportResult | null {
   try {
-    const lines = csv.split(/\r?\n/).filter((l) => l.trim());
-    if (lines.length < 2) return null;
+    const allLines = csv.split(/\r?\n/);
+
+    // Extract metadata from comment lines
+    const meta: CsvImportResult['meta'] = {};
+    const dataLines: string[] = [];
+    for (const line of allLines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('#')) {
+        // Parse metadata: "# key,value"
+        const content = trimmed.slice(1).trim();
+        const commaIdx = content.indexOf(',');
+        if (commaIdx !== -1) {
+          const key = content.slice(0, commaIdx).trim();
+          const value = content.slice(commaIdx + 1).trim().replace(/^"|"$/g, '');
+          if (key === 'title') meta.title = value;
+          else if (key === 'subtitle') meta.subtitle = value;
+          else if (key === 'startDate') meta.startDate = value;
+          else if (key === 'endDate') meta.endDate = value;
+          else if (key === 'theme') meta.theme = value;
+          else if (key === 'view') meta.view = value;
+        }
+      } else if (trimmed) {
+        dataLines.push(trimmed);
+      }
+    }
+
+    if (dataLines.length < 2) return null;
 
     // Parse header to find column indices
-    const header = parseCsvLine(lines[0]).map((h) => h.toLowerCase().trim());
+    const header = parseCsvLine(dataLines[0]).map((h) => h.toLowerCase().trim());
     const idx = {
       type: header.indexOf('type'),
       label: header.indexOf('label'),
@@ -284,8 +331,8 @@ export function importProjectFromCsv(csv: string): { items: Omit<TimelineItem, '
     const rowLabels: string[] = [];
     const items: Omit<TimelineItem, 'id'>[] = [];
 
-    for (let i = 1; i < lines.length; i++) {
-      const fields = parseCsvLine(lines[i]);
+    for (let i = 1; i < dataLines.length; i++) {
+      const fields = parseCsvLine(dataLines[i]);
       if (fields.length < 3) continue;
 
       const type = (fields[idx.type] || 'phase') as TimelineItem['type'];
@@ -308,7 +355,17 @@ export function importProjectFromCsv(csv: string): { items: Omit<TimelineItem, '
       });
     }
 
-    return { items, rowLabels };
+    // If no metadata date range, compute from items
+    if (!meta.startDate || !meta.endDate) {
+      const dates = items.flatMap((item) => [item.startDate, item.endDate].filter(Boolean) as string[]);
+      if (dates.length > 0) {
+        dates.sort();
+        if (!meta.startDate) meta.startDate = dates[0];
+        if (!meta.endDate) meta.endDate = dates[dates.length - 1];
+      }
+    }
+
+    return { items, rowLabels, meta };
   } catch {
     return null;
   }

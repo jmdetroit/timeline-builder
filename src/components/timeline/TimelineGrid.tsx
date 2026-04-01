@@ -136,8 +136,41 @@ export default function TimelineGrid({ width, height, padding, theme, rowHeight,
         );
       })}
 
+      {/* Event lines */}
+      {(settings.eventLines || []).map((evt) => {
+        if (evt.date < settings.startDate || evt.date > settings.endDate) return null;
+        const x = padding.left + dateToPosition(evt.date, settings.startDate, settings.endDate, contentWidth);
+        const dashMap = { dashed: '6,3', dotted: '2,4', solid: undefined };
+        return (
+          <g key={evt.id}>
+            <line
+              x1={x}
+              y1={padding.top}
+              x2={x}
+              y2={height - padding.bottom}
+              stroke={evt.color}
+              strokeWidth={1.5}
+              strokeDasharray={dashMap[evt.style] || undefined}
+              opacity={evt.opacity ?? 0.7}
+            />
+            <text
+              x={x}
+              y={height - padding.bottom + 14}
+              textAnchor="middle"
+              fill={evt.color}
+              fontSize={9}
+              fontWeight={600}
+              fontFamily={theme.fontFamily}
+            >
+              {evt.label.toUpperCase()}
+            </text>
+          </g>
+        );
+      })}
+
       {/* Today marker */}
       {(() => {
+        if (settings.showTodayMarker === false) return null;
         const today = new Date().toISOString().split('T')[0];
         if (today >= settings.startDate && today <= settings.endDate) {
           const x = padding.left + dateToPosition(today, settings.startDate, settings.endDate, contentWidth);

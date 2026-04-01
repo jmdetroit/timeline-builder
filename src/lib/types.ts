@@ -15,6 +15,17 @@ export type ThemeName =
   | 'custom';
 export type ItemType = 'phase' | 'milestone' | 'task';
 
+export type EventLineStyle = 'dashed' | 'solid' | 'dotted';
+
+export interface EventLine {
+  id: string;
+  label: string;
+  date: string;           // ISO date string
+  color: string;
+  style: EventLineStyle;
+  opacity?: number;       // 0–1, default 0.7
+}
+
 export interface TimelineItem {
   id: string;
   type: ItemType;
@@ -36,7 +47,9 @@ export interface TimelineSettings {
   endDate: string;
   showGrid: boolean;
   showLabels: boolean;
+  showTodayMarker: boolean;
   rowLabels: string[];
+  eventLines: EventLine[];
 }
 
 export interface TimelineProject {

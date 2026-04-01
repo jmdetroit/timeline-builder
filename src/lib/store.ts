@@ -1,7 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
-import { TimelineItem, TimelineSettings, ViewMode, ThemeName, ThemeConfig, ThemeColors } from './types';
+import { TimelineItem, TimelineSettings, ViewMode, ThemeName, ThemeConfig, ThemeColors, EventLine } from './types';
 import { generateId } from './utils';
 import { defaultCustomTheme, themes } from './themes';
 
@@ -35,6 +35,11 @@ interface TimelineState {
   updateCustomThemeFont: (key: 'fontFamily' | 'headingFont', value: string) => void;
   initCustomThemeFrom: (themeName: string) => void;
 
+  // Actions - Event Lines
+  addEventLine: (line: Omit<EventLine, 'id'>) => void;
+  updateEventLine: (id: string, updates: Partial<EventLine>) => void;
+  removeEventLine: (id: string) => void;
+
   // Actions - Rows
   addRow: (label: string) => void;
   removeRow: (index: number) => void;
@@ -55,7 +60,9 @@ const defaultSettings: TimelineSettings = {
   endDate: '2026-06-30',
   showGrid: true,
   showLabels: true,
+  showTodayMarker: true,
   rowLabels: ['Strategy', 'Design', 'Development', 'Launch'],
+  eventLines: [],
 };
 
 export const useTimelineStore = create<TimelineState>((set) => ({
@@ -151,6 +158,30 @@ export const useTimelineStore = create<TimelineState>((set) => ({
         settings: { ...state.settings, theme: 'custom' as ThemeName },
       };
     }),
+
+  addEventLine: (line) =>
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        eventLines: [...(state.settings.eventLines || []), { ...line, id: generateId() }],
+      },
+    })),
+  updateEventLine: (id, updates) =>
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        eventLines: (state.settings.eventLines || []).map((l) =>
+          l.id === id ? { ...l, ...updates } : l
+        ),
+      },
+    })),
+  removeEventLine: (id) =>
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        eventLines: (state.settings.eventLines || []).filter((l) => l.id !== id),
+      },
+    })),
 
   addRow: (label) =>
     set((state) => ({

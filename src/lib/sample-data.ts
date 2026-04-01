@@ -9,7 +9,9 @@ export const sampleSettings: TimelineSettings = {
   endDate: '2026-03-31',
   showGrid: true,
   showLabels: true,
+  showTodayMarker: true,
   rowLabels: ['Strategy', 'Design', 'Development', 'Launch'],
+  eventLines: [],
 };
 
 export const sampleItems: TimelineItem[] = [

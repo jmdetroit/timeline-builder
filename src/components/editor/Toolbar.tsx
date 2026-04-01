@@ -3,7 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { useTimelineStore } from '@/lib/store';
 import { themes } from '@/lib/themes';
-import { ViewMode, ThemeName, TimelineItem } from '@/lib/types';
+import { ViewMode, ThemeName, TimelineItem, TimelineSettings } from '@/lib/types';
 import { exportTimelineSvg, downloadSvg, exportTimelinePng, exportProjectAsJson, downloadJson, importProjectFromJson, exportProjectAsCsv, downloadCsv, generateCsvTemplate, importProjectFromCsv } from '@/lib/export';
 import { templates } from '@/lib/sample-data';
 import {
@@ -21,6 +21,7 @@ import {
   Trash2,
   Pipette,
   ChevronDown,
+  Globe,
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -63,38 +64,55 @@ export default function Toolbar({ timelineRef, svgRef }: ToolbarProps) {
 
   const slugTitle = settings.title.toLowerCase().replace(/\s+/g, '-');
 
+  const [confirmAction, setConfirmAction] = useState<{
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  const showConfirm = (message: string, onConfirm: () => void) => {
+    setConfirmAction({ message, onConfirm });
+  };
+
   const handleExportSvg = () => {
     if (!svgRef.current) return;
-    try {
-      const svgString = exportTimelineSvg(svgRef.current);
-      downloadSvg(svgString, `${slugTitle}.svg`);
-    } catch (err) {
-      console.error('SVG export failed:', err);
-    }
+    showConfirm('Export timeline as SVG?', () => {
+      try {
+        const svgString = exportTimelineSvg(svgRef.current!);
+        downloadSvg(svgString, `${slugTitle}.svg`);
+      } catch (err) {
+        console.error('SVG export failed:', err);
+      }
+    });
     setShowExport(false);
   };
 
-  const handleExportPng = async () => {
+  const handleExportPng = () => {
     if (!timelineRef.current) return;
-    try {
-      const themeObj = themes[settings.theme];
-      const bg = themeObj?.colors.background || '#FFFFFF';
-      await exportTimelinePng(timelineRef.current, { scale: 2, backgroundColor: bg });
-    } catch (err) {
-      console.error('PNG export failed:', err);
-    }
+    showConfirm('Export timeline as PNG (2x)?', async () => {
+      try {
+        const themeObj = themes[settings.theme];
+        const bg = themeObj?.colors.background || '#FFFFFF';
+        await exportTimelinePng(timelineRef.current!, { scale: 2, backgroundColor: bg });
+      } catch (err) {
+        console.error('PNG export failed:', err);
+      }
+    });
     setShowExport(false);
   };
 
   const handleExportJson = () => {
-    const json = exportProjectAsJson(items, settings);
-    downloadJson(json, `timeline-${slugTitle}.json`);
+    showConfirm('Export timeline as JSON?', () => {
+      const json = exportProjectAsJson(items, settings);
+      downloadJson(json, `timeline-${slugTitle}.json`);
+    });
     setShowExport(false);
   };
 
   const handleExportCsv = () => {
-    const csv = exportProjectAsCsv(items, settings);
-    downloadCsv(csv, `${slugTitle}.csv`);
+    showConfirm('Export timeline as CSV?', () => {
+      const csv = exportProjectAsCsv(items, settings);
+      downloadCsv(csv, `${slugTitle}.csv`);
+    });
     setShowExport(false);
   };
 
@@ -109,19 +127,29 @@ export default function Toolbar({ timelineRef, svgRef }: ToolbarProps) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      const result = importProjectFromCsv(reader.result as string);
-      if (result) {
-        const newSettings = {
-          ...settings,
-          rowLabels: result.rowLabels,
-        };
-        // Generate IDs for imported items
-        const itemsWithIds = result.items.map((item, i) => ({
-          ...item,
-          id: `csv-${Date.now()}-${i}`,
-        }));
-        loadProject(itemsWithIds as TimelineItem[], newSettings);
-      }
+      showConfirm(`Import "${file.name}"? This will replace your current timeline.`, () => {
+        const result = importProjectFromCsv(reader.result as string);
+        if (result) {
+          const newSettings: TimelineSettings = {
+            view: (result.meta.view as TimelineSettings['view']) || 'quarterly',
+            theme: (result.meta.theme as TimelineSettings['theme']) || 'corporate',
+            title: result.meta.title || file.name.replace(/\.csv$/i, ''),
+            subtitle: result.meta.subtitle || '',
+            startDate: result.meta.startDate || '2025-01-01',
+            endDate: result.meta.endDate || '2026-06-30',
+            showGrid: true,
+            showLabels: true,
+            showTodayMarker: true,
+            rowLabels: result.rowLabels,
+            eventLines: [],
+          };
+          const itemsWithIds = result.items.map((item, i) => ({
+            ...item,
+            id: `csv-${Date.now()}-${i}`,
+          }));
+          loadProject(itemsWithIds as TimelineItem[], newSettings);
+        }
+      });
     };
     reader.readAsText(file);
     e.target.value = '';
@@ -133,8 +161,10 @@ export default function Toolbar({ timelineRef, svgRef }: ToolbarProps) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      const result = importProjectFromJson(reader.result as string);
-      if (result) loadProject(result.items, result.settings);
+      showConfirm(`Import "${file.name}"? This will replace your current timeline.`, () => {
+        const result = importProjectFromJson(reader.result as string);
+        if (result) loadProject(result.items, result.settings);
+      });
     };
     reader.readAsText(file);
     e.target.value = '';
@@ -143,7 +173,11 @@ export default function Toolbar({ timelineRef, svgRef }: ToolbarProps) {
 
   const handleLoadTemplate = (key: string) => {
     const template = templates[key as keyof typeof templates];
-    if (template) loadProject(template.items, template.settings);
+    if (template) {
+      showConfirm(`Load template "${template.name}"? This will replace your current timeline.`, () => {
+        loadProject(template.items, template.settings);
+      });
+    }
     setShowTemplates(false);
   };
 
@@ -319,14 +353,50 @@ export default function Toolbar({ timelineRef, svgRef }: ToolbarProps) {
         )}
       </div>
 
+      {/* Map Builder */}
+      <a
+        href="/map"
+        className="toolbar-btn"
+        title="Map Builder"
+        style={{ textDecoration: 'none' }}
+      >
+        <Globe size={14} />
+      </a>
+
       {/* Clear */}
       <button
         className="toolbar-btn danger"
-        onClick={clearProject}
+        onClick={() => showConfirm('Clear all items and reset the timeline? This cannot be undone.', clearProject)}
         title="Clear all"
       >
         <Trash2 size={14} />
       </button>
+
+      {/* Confirmation modal */}
+      {confirmAction && (
+        <div className="confirm-overlay" onClick={() => setConfirmAction(null)}>
+          <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <p className="confirm-message">{confirmAction.message}</p>
+            <div className="confirm-actions">
+              <button
+                className="confirm-btn cancel"
+                onClick={() => setConfirmAction(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="confirm-btn confirm"
+                onClick={() => {
+                  confirmAction.onConfirm();
+                  setConfirmAction(null);
+                }}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

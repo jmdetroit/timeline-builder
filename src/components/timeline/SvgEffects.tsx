@@ -62,10 +62,10 @@ export default function SvgEffects({ theme, width, height }: SvgEffectsProps) {
             id={`bar-frost-solid-${i}`}
             x1="0%" y1="0%" x2="0%" y2="100%"
           >
-            <stop offset="0%" stopColor="#F0F0F6" stopOpacity={0.15} />
-            <stop offset="35%" stopColor="#E8E9F0" stopOpacity={0.4} />
-            <stop offset="70%" stopColor="#E2E3EC" stopOpacity={0.7} />
-            <stop offset="100%" stopColor="#DDDEE8" stopOpacity={0.88} />
+            <stop offset="0%" stopColor={colors.surface} stopOpacity={0.15} />
+            <stop offset="35%" stopColor={colors.surface} stopOpacity={0.4} />
+            <stop offset="70%" stopColor={darken(colors.surface, 3)} stopOpacity={0.7} />
+            <stop offset="100%" stopColor={darken(colors.surface, 5)} stopOpacity={0.88} />
           </linearGradient>
         </React.Fragment>
       ))}
