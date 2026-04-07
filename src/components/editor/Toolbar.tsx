@@ -22,6 +22,8 @@ import {
   Pipette,
   ChevronDown,
   Globe,
+  Undo2,
+  Redo2,
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -38,6 +40,10 @@ export default function Toolbar({ timelineRef, svgRef }: ToolbarProps) {
   const clearProject = useTimelineStore((s) => s.clearProject);
   const showThemeCustomizer = useTimelineStore((s) => s.showThemeCustomizer);
   const setShowThemeCustomizer = useTimelineStore((s) => s.setShowThemeCustomizer);
+  const undo = useTimelineStore((s) => s.undo);
+  const redo = useTimelineStore((s) => s.redo);
+  const canUndo = useTimelineStore((s) => s.canUndo);
+  const canRedo = useTimelineStore((s) => s.canRedo);
 
   const [showExport, setShowExport] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -58,9 +64,11 @@ export default function Toolbar({ timelineRef, svgRef }: ToolbarProps) {
   // Get current theme info for the dropdown button
   const currentTheme = themes[settings.theme];
   const currentLabel = settings.theme === 'custom' ? 'Custom' : currentTheme?.label || settings.theme;
-  const currentColor = settings.theme === 'custom'
-    ? '#888'
-    : currentTheme?.colors.primary || '#888';
+  const currentDotStyle = settings.theme === 'custom'
+    ? { backgroundColor: '#888' }
+    : currentTheme?.previewGradient
+      ? { background: currentTheme.previewGradient }
+      : { backgroundColor: currentTheme?.colors.primary || '#888' };
 
   const slugTitle = settings.title.toLowerCase().replace(/\s+/g, '-');
 
@@ -140,6 +148,7 @@ export default function Toolbar({ timelineRef, svgRef }: ToolbarProps) {
             showGrid: true,
             showLabels: true,
             showTodayMarker: true,
+            showProgress: result.meta.showProgress === 'true',
             rowLabels: result.rowLabels,
             eventLines: [],
           };
@@ -208,7 +217,7 @@ export default function Toolbar({ timelineRef, svgRef }: ToolbarProps) {
           className="toolbar-btn theme-dropdown-trigger"
           onClick={() => setShowThemeDropdown(!showThemeDropdown)}
         >
-          <span className="theme-dot" style={{ backgroundColor: currentColor }} />
+          <span className="theme-dot" style={currentDotStyle} />
           <span>{currentLabel}</span>
           <ChevronDown size={12} />
         </button>
@@ -222,7 +231,7 @@ export default function Toolbar({ timelineRef, svgRef }: ToolbarProps) {
                 className={`dropdown-item ${settings.theme === t.name ? 'active' : ''}`}
                 onClick={() => setTheme(t.name as ThemeName)}
               >
-                <span className="theme-dot" style={{ backgroundColor: t.colors.primary }} />
+                <span className="theme-dot" style={t.previewGradient ? { background: t.previewGradient } : { backgroundColor: t.colors.primary }} />
                 <span>{t.label}</span>
                 <span className="dropdown-item-desc">{t.description}</span>
               </button>
@@ -235,7 +244,7 @@ export default function Toolbar({ timelineRef, svgRef }: ToolbarProps) {
                 className={`dropdown-item ${settings.theme === t.name ? 'active' : ''}`}
                 onClick={() => setTheme(t.name as ThemeName)}
               >
-                <span className="theme-dot" style={{ backgroundColor: t.colors.primary }} />
+                <span className="theme-dot" style={t.previewGradient ? { background: t.previewGradient } : { backgroundColor: t.colors.primary }} />
                 <span>{t.label}</span>
                 <span className="dropdown-item-desc">{t.description}</span>
               </button>
@@ -276,6 +285,26 @@ export default function Toolbar({ timelineRef, svgRef }: ToolbarProps) {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Undo / Redo */}
+      <div className="toolbar-group">
+        <button
+          className="toolbar-btn"
+          onClick={undo}
+          disabled={!canUndo()}
+          title="Undo (Ctrl+Z)"
+        >
+          <Undo2 size={14} />
+        </button>
+        <button
+          className="toolbar-btn"
+          onClick={redo}
+          disabled={!canRedo()}
+          title="Redo (Ctrl+Y)"
+        >
+          <Redo2 size={14} />
+        </button>
       </div>
 
       <div className="toolbar-spacer" />

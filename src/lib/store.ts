@@ -5,6 +5,27 @@ import { TimelineItem, TimelineSettings, ViewMode, ThemeName, ThemeConfig, Theme
 import { generateId } from './utils';
 import { defaultCustomTheme, themes } from './themes';
 
+// ── Undo / Redo history ──
+interface HistorySnapshot {
+  items: TimelineItem[];
+  settings: TimelineSettings;
+}
+
+const MAX_HISTORY = 50;
+let _undoStack: HistorySnapshot[] = [];
+let _redoStack: HistorySnapshot[] = [];
+let _skipSnapshot = false;
+
+function pushSnapshot(state: { items: TimelineItem[]; settings: TimelineSettings }) {
+  if (_skipSnapshot) return;
+  _undoStack.push({
+    items: JSON.parse(JSON.stringify(state.items)),
+    settings: JSON.parse(JSON.stringify(state.settings)),
+  });
+  if (_undoStack.length > MAX_HISTORY) _undoStack.shift();
+  _redoStack = []; // new action clears redo
+}
+
 interface TimelineState {
   // Data
   items: TimelineItem[];
@@ -18,6 +39,7 @@ interface TimelineState {
 
   // Actions - Items
   addItem: (item: Omit<TimelineItem, 'id'>) => void;
+  duplicateItem: (id: string) => string | null;
   updateItem: (id: string, updates: Partial<TimelineItem>) => void;
   removeItem: (id: string) => void;
   setSelectedItem: (id: string | null) => void;
@@ -49,6 +71,15 @@ interface TimelineState {
   // Actions - Project
   loadProject: (items: TimelineItem[], settings: TimelineSettings) => void;
   clearProject: () => void;
+
+  // Actions - Undo/Redo
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+  /** Batch drag: call before dragging to snapshot once, skip during drag */
+  beginDrag: () => void;
+  endDrag: () => void;
 }
 
 const defaultSettings: TimelineSettings = {
@@ -61,6 +92,7 @@ const defaultSettings: TimelineSettings = {
   showGrid: true,
   showLabels: true,
   showTodayMarker: true,
+  showProgress: false,
   rowLabels: ['Strategy', 'Design', 'Development', 'Launch'],
   eventLines: [],
 };
@@ -74,23 +106,41 @@ export const useTimelineStore = create<TimelineState>((set) => ({
   showThemeCustomizer: false,
 
   addItem: (item) =>
-    set((state) => ({
-      items: [...state.items, { ...item, id: generateId() }],
-    })),
+    set((state) => {
+      pushSnapshot(state);
+      return { items: [...state.items, { ...item, id: generateId() }] };
+    }),
+
+  duplicateItem: (id) => {
+    const state = useTimelineStore.getState();
+    const source = state.items.find((i) => i.id === id);
+    if (!source) return null;
+    pushSnapshot(state);
+    const newId = generateId();
+    const clone = { ...source, id: newId, label: source.label + ' (copy)' };
+    set({ items: [...state.items, clone] });
+    return newId;
+  },
 
   updateItem: (id, updates) =>
-    set((state) => ({
-      items: state.items.map((item) =>
-        item.id === id ? { ...item, ...updates } : item
-      ),
-    })),
+    set((state) => {
+      pushSnapshot(state);
+      return {
+        items: state.items.map((item) =>
+          item.id === id ? { ...item, ...updates } : item
+        ),
+      };
+    }),
 
   removeItem: (id) =>
-    set((state) => ({
-      items: state.items.filter((item) => item.id !== id),
-      selectedItemId: state.selectedItemId === id ? null : state.selectedItemId,
-      editingItemId: state.editingItemId === id ? null : state.editingItemId,
-    })),
+    set((state) => {
+      pushSnapshot(state);
+      return {
+        items: state.items.filter((item) => item.id !== id),
+        selectedItemId: state.selectedItemId === id ? null : state.selectedItemId,
+        editingItemId: state.editingItemId === id ? null : state.editingItemId,
+      };
+    }),
 
   setSelectedItem: (id) => set({ selectedItemId: id }),
   setEditingItem: (id) => set({ editingItemId: id }),
@@ -184,17 +234,20 @@ export const useTimelineStore = create<TimelineState>((set) => ({
     })),
 
   addRow: (label) =>
-    set((state) => ({
-      settings: {
-        ...state.settings,
-        rowLabels: [...state.settings.rowLabels, label],
-      },
-    })),
+    set((state) => {
+      pushSnapshot(state);
+      return {
+        settings: {
+          ...state.settings,
+          rowLabels: [...state.settings.rowLabels, label],
+        },
+      };
+    }),
 
   removeRow: (index) =>
     set((state) => {
+      pushSnapshot(state);
       const newLabels = state.settings.rowLabels.filter((_, i) => i !== index);
-      // Remove items in this row, shift items in higher rows down
       const newItems = state.items
         .filter((item) => item.row !== index)
         .map((item) => ({
@@ -233,13 +286,60 @@ export const useTimelineStore = create<TimelineState>((set) => ({
       };
     }),
 
-  loadProject: (items, settings) => set({ items, settings, selectedItemId: null, editingItemId: null }),
+  loadProject: (items, settings) => {
+    const state = useTimelineStore.getState();
+    pushSnapshot(state);
+    set({ items, settings, selectedItemId: null, editingItemId: null });
+  },
 
-  clearProject: () =>
+  clearProject: () => {
+    const state = useTimelineStore.getState();
+    pushSnapshot(state);
     set({
       items: [],
       settings: defaultSettings,
       selectedItemId: null,
       editingItemId: null,
-    }),
+    });
+  },
+
+  // ── Undo / Redo ──
+  undo: () => {
+    if (_undoStack.length === 0) return;
+    const state = useTimelineStore.getState();
+    _redoStack.push({
+      items: JSON.parse(JSON.stringify(state.items)),
+      settings: JSON.parse(JSON.stringify(state.settings)),
+    });
+    const snapshot = _undoStack.pop()!;
+    _skipSnapshot = true;
+    set({ items: snapshot.items, settings: snapshot.settings, selectedItemId: null });
+    _skipSnapshot = false;
+  },
+
+  redo: () => {
+    if (_redoStack.length === 0) return;
+    const state = useTimelineStore.getState();
+    _undoStack.push({
+      items: JSON.parse(JSON.stringify(state.items)),
+      settings: JSON.parse(JSON.stringify(state.settings)),
+    });
+    const snapshot = _redoStack.pop()!;
+    _skipSnapshot = true;
+    set({ items: snapshot.items, settings: snapshot.settings, selectedItemId: null });
+    _skipSnapshot = false;
+  },
+
+  canUndo: () => _undoStack.length > 0,
+  canRedo: () => _redoStack.length > 0,
+
+  beginDrag: () => {
+    // Snapshot once at start of drag, then suppress during drag moves
+    const state = useTimelineStore.getState();
+    pushSnapshot(state);
+    _skipSnapshot = true;
+  },
+  endDrag: () => {
+    _skipSnapshot = false;
+  },
 }));

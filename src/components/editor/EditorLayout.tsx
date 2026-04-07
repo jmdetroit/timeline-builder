@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useTimelineStore } from '@/lib/store';
 import { sampleItems, sampleSettings } from '@/lib/sample-data';
 import { saveProject, loadSavedProject, saveCustomTheme, loadCustomTheme } from '@/lib/storage';
@@ -56,6 +56,43 @@ export default function EditorLayout() {
     return () => clearTimeout(timer);
   }, [customTheme]);
 
+  // ── Delete confirmation state ──
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    id: string;
+    label: string;
+  } | null>(null);
+
+  // ── Keyboard shortcuts (Undo/Redo/Delete) ──
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Skip if user is typing in an input
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        useTimelineStore.getState().undo();
+      } else if (
+        ((e.ctrlKey || e.metaKey) && e.key === 'y') ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z')
+      ) {
+        e.preventDefault();
+        useTimelineStore.getState().redo();
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        const state = useTimelineStore.getState();
+        if (state.selectedItemId) {
+          const item = state.items.find((i) => i.id === state.selectedItemId);
+          if (item) {
+            e.preventDefault();
+            setDeleteConfirm({ id: item.id, label: item.label });
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   return (
     <div className="editor-layout">
       <Toolbar timelineRef={timelineRef} svgRef={svgRef} />
@@ -79,6 +116,33 @@ export default function EditorLayout() {
       <div className="autosave-indicator">
         Auto-saved
       </div>
+
+      {/* Delete confirmation modal */}
+      {deleteConfirm && (
+        <div className="confirm-overlay" onClick={() => setDeleteConfirm(null)}>
+          <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <p className="confirm-message">Delete &ldquo;{deleteConfirm.label}&rdquo;?</p>
+            <div className="confirm-actions">
+              <button
+                className="confirm-btn cancel"
+                onClick={() => setDeleteConfirm(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="confirm-btn confirm"
+                onClick={() => {
+                  useTimelineStore.getState().removeItem(deleteConfirm.id);
+                  useTimelineStore.getState().setSelectedItem(null);
+                  setDeleteConfirm(null);
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

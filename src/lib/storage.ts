@@ -43,6 +43,7 @@ export function loadSavedProject(): { items: TimelineItem[]; settings: TimelineS
       // Ensure fields exist for backwards compatibility
       if (!data.settings.eventLines) data.settings.eventLines = [];
       if (data.settings.showTodayMarker === undefined) data.settings.showTodayMarker = true;
+      if (data.settings.showProgress === undefined) data.settings.showProgress = false;
       return { items: data.items, settings: data.settings };
     }
     return null;
@@ -113,6 +114,7 @@ function migrateSettings(settings: TimelineSettings): TimelineSettings {
     ...settings,
     eventLines: settings.eventLines || [],
     showTodayMarker: settings.showTodayMarker ?? true,
+    showProgress: settings.showProgress ?? false,
   };
 }
 

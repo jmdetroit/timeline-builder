@@ -186,7 +186,7 @@ function escapeCsvField(value: string): string {
   return value;
 }
 
-const CSV_HEADERS = ['type', 'label', 'description', 'startDate', 'endDate', 'row'] as const;
+const CSV_HEADERS = ['type', 'label', 'description', 'startDate', 'endDate', 'row', 'color', 'progress'] as const;
 
 export function exportProjectAsCsv(items: TimelineItem[], settings: TimelineSettings): string {
   // Metadata lines (prefixed with #) to preserve project settings
@@ -197,6 +197,7 @@ export function exportProjectAsCsv(items: TimelineItem[], settings: TimelineSett
     `# endDate,${settings.endDate}`,
     `# theme,${settings.theme}`,
     `# view,${settings.view}`,
+    `# showProgress,${settings.showProgress}`,
   ];
   const headerRow = CSV_HEADERS.join(',');
   const dataRows = items.map((item) => {
@@ -208,6 +209,8 @@ export function exportProjectAsCsv(items: TimelineItem[], settings: TimelineSett
       item.startDate,
       item.endDate || '',
       escapeCsvField(rowLabel),
+      item.color || '',
+      item.progress != null ? String(item.progress) : '',
     ].join(',');
   });
   return [...meta, headerRow, ...dataRows].join('\n');
@@ -281,6 +284,7 @@ export interface CsvImportResult {
     endDate?: string;
     theme?: string;
     view?: string;
+    showProgress?: string;
   };
 }
 
@@ -306,6 +310,7 @@ export function importProjectFromCsv(csv: string): CsvImportResult | null {
           else if (key === 'endDate') meta.endDate = value;
           else if (key === 'theme') meta.theme = value;
           else if (key === 'view') meta.view = value;
+          else if (key === 'showProgress') meta.showProgress = value;
         }
       } else if (trimmed) {
         dataLines.push(trimmed);
@@ -323,6 +328,8 @@ export function importProjectFromCsv(csv: string): CsvImportResult | null {
       startDate: header.indexOf('startdate'),
       endDate: header.indexOf('enddate'),
       row: header.indexOf('row'),
+      color: header.indexOf('color'),
+      progress: header.indexOf('progress'),
     };
 
     if (idx.type === -1 || idx.label === -1 || idx.startDate === -1) return null;
@@ -345,6 +352,10 @@ export function importProjectFromCsv(csv: string): CsvImportResult | null {
       if (!rowLabels.includes(rowName)) rowLabels.push(rowName);
       const rowIndex = rowLabels.indexOf(rowName);
 
+      const colorVal = idx.color !== -1 ? fields[idx.color] || undefined : undefined;
+      const progressVal = idx.progress !== -1 ? fields[idx.progress] : undefined;
+      const progressNum = progressVal ? parseInt(progressVal, 10) : undefined;
+
       items.push({
         type,
         label,
@@ -352,6 +363,8 @@ export function importProjectFromCsv(csv: string): CsvImportResult | null {
         startDate: fields[idx.startDate],
         endDate: idx.endDate !== -1 ? fields[idx.endDate] || undefined : undefined,
         row: rowIndex,
+        color: colorVal,
+        progress: progressNum != null && !isNaN(progressNum) ? progressNum : undefined,
       });
     }
 

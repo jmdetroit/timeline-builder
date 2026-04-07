@@ -97,7 +97,7 @@ export default function ThemeCustomizer() {
               <span
                 className="preset-swatch"
                 style={{
-                  background: `linear-gradient(135deg, ${t.colors.primary}, ${t.colors.categories[1] || t.colors.accent})`,
+                  background: t.previewGradient || `linear-gradient(135deg, ${t.colors.primary}, ${t.colors.categories[1] || t.colors.accent})`,
                 }}
               />
               <span className="preset-name">{t.label}</span>

@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { useTimelineStore } from '@/lib/store';
+import { TimelineItem } from '@/lib/types';
 import { getTheme } from '@/lib/themes';
 import SvgEffects from './SvgEffects';
 import TimelineGrid from './TimelineGrid';
@@ -22,6 +23,7 @@ export default function TimelineRenderer({ svgRef }: TimelineRendererProps) {
   const settings = useTimelineStore((s) => s.settings);
   const selectedItemId = useTimelineStore((s) => s.selectedItemId);
   const setSelectedItem = useTimelineStore((s) => s.setSelectedItem);
+  const updateItem = useTimelineStore((s) => s.updateItem);
   const customTheme = useTimelineStore((s) => s.customTheme);
 
   const theme = settings.theme === 'custom' ? customTheme : getTheme(settings.theme);
@@ -52,6 +54,22 @@ export default function TimelineRenderer({ svgRef }: TimelineRendererProps) {
   const handleBackgroundClick = useCallback(() => {
     setSelectedItem(null);
   }, [setSelectedItem]);
+
+  const beginDrag = useTimelineStore((s) => s.beginDrag);
+  const endDrag = useTimelineStore((s) => s.endDrag);
+  const duplicateItem = useTimelineStore((s) => s.duplicateItem);
+
+  const handleDragUpdate = useCallback(
+    (id: string, updates: Partial<TimelineItem>) => {
+      updateItem(id, updates);
+    },
+    [updateItem]
+  );
+
+  const handleDragStart = useCallback(() => { beginDrag(); }, [beginDrag]);
+  const handleDragEnd = useCallback(() => { endDrag(); }, [endDrag]);
+  const handleDuplicate = useCallback((id: string) => duplicateItem(id), [duplicateItem]);
+  const handleRename = useCallback((id: string, label: string) => updateItem(id, { label }), [updateItem]);
 
   const phases = items.filter((item) => item.type === 'phase' || item.type === 'task');
   const milestones = items.filter((item) => item.type === 'milestone');
@@ -148,7 +166,13 @@ export default function TimelineRenderer({ svgRef }: TimelineRendererProps) {
                 paddingTop={padding.top}
                 rowHeight={rowHeight}
                 isSelected={selectedItemId === item.id}
+                showProgress={settings.showProgress !== false}
                 onClick={() => handleItemClick(item.id)}
+                onDragUpdate={handleDragUpdate}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onDuplicate={handleDuplicate}
+                onRename={handleRename}
               />
             ))}
           </g>

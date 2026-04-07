@@ -36,6 +36,7 @@ export interface TimelineItem {
   row: number;
   category?: string;
   color?: string;
+  progress?: number; // 0–100 percent complete
 }
 
 export interface TimelineSettings {
@@ -48,6 +49,7 @@ export interface TimelineSettings {
   showGrid: boolean;
   showLabels: boolean;
   showTodayMarker: boolean;
+  showProgress: boolean;
   rowLabels: string[];
   eventLines: EventLine[];
 }
@@ -122,6 +124,10 @@ export interface ThemeEffects {
   frostColor?: string;           // Frost tint color (default white)
   barTextUppercase?: boolean;    // All-caps bar labels
   barLetterSpacing?: number;     // Letter spacing (kerning) for bar labels
+
+  // Neumorphic shadow overrides (for dark-mode frostSolid)
+  neuShadowColor?: string;       // Bottom-right shadow color
+  neuHighlightColor?: string;    // Top-left highlight color
 }
 
 export interface ThemeConfig {
@@ -136,6 +142,7 @@ export interface ThemeConfig {
   headingFont: string;
   itemHeight: number;
   itemGap: number;
+  previewGradient?: string;        // Custom CSS gradient for preset swatch icon
   barStyle: 'rounded' | 'sharp' | 'pill';
   milestoneShape: 'diamond' | 'circle' | 'square' | 'star';
 }

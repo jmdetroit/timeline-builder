@@ -10,6 +10,7 @@ export const sampleSettings: TimelineSettings = {
   showGrid: true,
   showLabels: true,
   showTodayMarker: true,
+  showProgress: false,
   rowLabels: ['Strategy', 'Design', 'Development', 'Launch'],
   eventLines: [],
 };
