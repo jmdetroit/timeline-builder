@@ -24,6 +24,9 @@ import {
   Globe,
   Undo2,
   Redo2,
+  ZoomIn,
+  ZoomOut,
+  Layers,
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -36,6 +39,7 @@ export default function Toolbar({ timelineRef, svgRef }: ToolbarProps) {
   const items = useTimelineStore((s) => s.items);
   const setView = useTimelineStore((s) => s.setView);
   const setTheme = useTimelineStore((s) => s.setTheme);
+  const updateSettings = useTimelineStore((s) => s.updateSettings);
   const loadProject = useTimelineStore((s) => s.loadProject);
   const clearProject = useTimelineStore((s) => s.clearProject);
   const showThemeCustomizer = useTimelineStore((s) => s.showThemeCustomizer);
@@ -285,6 +289,48 @@ export default function Toolbar({ timelineRef, svgRef }: ToolbarProps) {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Zoom controls */}
+      <div className="toolbar-group">
+        <span className="toolbar-label">Zoom</span>
+        <div className="toolbar-buttons">
+          <button
+            className="toolbar-btn"
+            onClick={() => {
+              const current = settings.zoom ?? 1;
+              updateSettings({ zoom: Math.max(0.5, +(current - 0.25).toFixed(2)) });
+            }}
+            title="Zoom out"
+          >
+            <ZoomOut size={14} />
+          </button>
+          <span className="toolbar-label" style={{ minWidth: 38, textAlign: 'center' }}>
+            {Math.round((settings.zoom ?? 1) * 100)}%
+          </span>
+          <button
+            className="toolbar-btn"
+            onClick={() => {
+              const current = settings.zoom ?? 1;
+              updateSettings({ zoom: Math.min(4, +(current + 0.25).toFixed(2)) });
+            }}
+            title="Zoom in"
+          >
+            <ZoomIn size={14} />
+          </button>
+          <button
+            className={`toolbar-btn ${settings.layoutMode === 'stacked' ? 'active' : ''}`}
+            onClick={() =>
+              updateSettings({
+                layoutMode: settings.layoutMode === 'stacked' ? 'default' : 'stacked',
+              })
+            }
+            title="Toggle tightly stacked lanes"
+          >
+            <Layers size={14} />
+            <span>Stack</span>
+          </button>
+        </div>
       </div>
 
       {/* Undo / Redo */}

@@ -40,11 +40,7 @@ export function loadSavedProject(): { items: TimelineItem[]; settings: TimelineS
     if (!raw) return null;
     const data: StoredProject = JSON.parse(raw);
     if (data.items && data.settings) {
-      // Ensure fields exist for backwards compatibility
-      if (!data.settings.eventLines) data.settings.eventLines = [];
-      if (data.settings.showTodayMarker === undefined) data.settings.showTodayMarker = true;
-      if (data.settings.showProgress === undefined) data.settings.showProgress = false;
-      return { items: data.items, settings: data.settings };
+      return { items: data.items, settings: migrateSettings(data.settings) };
     }
     return null;
   } catch (err) {
@@ -115,6 +111,8 @@ function migrateSettings(settings: TimelineSettings): TimelineSettings {
     eventLines: settings.eventLines || [],
     showTodayMarker: settings.showTodayMarker ?? true,
     showProgress: settings.showProgress ?? false,
+    zoom: settings.zoom ?? 1,
+    layoutMode: settings.layoutMode ?? 'default',
   };
 }
 

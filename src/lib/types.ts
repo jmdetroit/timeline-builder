@@ -14,6 +14,7 @@ export type ThemeName =
   | 'jmdetroit'
   | 'custom';
 export type ItemType = 'phase' | 'milestone' | 'task';
+export type LayoutMode = 'default' | 'stacked';
 
 export type EventLineStyle = 'dashed' | 'solid' | 'dotted';
 
@@ -52,6 +53,10 @@ export interface TimelineSettings {
   showProgress: boolean;
   rowLabels: string[];
   eventLines: EventLine[];
+  /** Horizontal zoom factor — 1.0 = default, >1 expands date range, <1 compresses */
+  zoom?: number;
+  /** Layout mode for row items: 'default' overlaps bars, 'stacked' assigns lanes so bars never overlap */
+  layoutMode?: LayoutMode;
 }
 
 export interface TimelineProject {

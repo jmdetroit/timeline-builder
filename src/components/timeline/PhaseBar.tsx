@@ -11,8 +11,8 @@ interface PhaseBarProps {
   endDate: string;
   contentWidth: number;
   paddingLeft: number;
-  paddingTop: number;
-  rowHeight: number;
+  /** Absolute Y pixel coordinate of the top of this bar (already includes row offset & lane stacking) */
+  barY: number;
   isSelected: boolean;
   showProgress: boolean;
   onClick: () => void;
@@ -32,8 +32,7 @@ export default function PhaseBar({
   endDate,
   contentWidth,
   paddingLeft,
-  paddingTop,
-  rowHeight,
+  barY,
   isSelected,
   showProgress,
   onClick,
@@ -43,7 +42,7 @@ export default function PhaseBar({
   onDuplicate,
   onRename,
 }: PhaseBarProps) {
-  const y = paddingTop + item.row * rowHeight + 4;
+  const y = barY;
 
   const x = paddingLeft + dateToPosition(item.startDate, startDate, endDate, contentWidth);
   const xEnd = paddingLeft + dateToPosition(item.endDate || item.startDate, startDate, endDate, contentWidth);

@@ -11,9 +11,10 @@ interface MilestoneMarkerProps {
   endDate: string;
   contentWidth: number;
   paddingLeft: number;
-  paddingTop: number;
-  rowHeight: number;
-  phaseAreaHeight: number;
+  /** Absolute Y pixel coordinate of the milestone center */
+  milestoneY: number;
+  /** Absolute Y pixel coordinate where the tick line begins */
+  tickTop: number;
   isSelected: boolean;
   onClick: () => void;
 }
@@ -32,14 +33,11 @@ export default function MilestoneMarker({
   endDate,
   contentWidth,
   paddingLeft,
-  paddingTop,
-  rowHeight,
-  phaseAreaHeight,
+  milestoneY,
+  tickTop,
   isSelected,
   onClick,
 }: MilestoneMarkerProps) {
-  // Milestones sit on their own sub-row below the phase bar area
-  const milestoneY = paddingTop + item.row * rowHeight + phaseAreaHeight + 14;
   const x = paddingLeft + dateToPosition(item.startDate, startDate, endDate, contentWidth);
   const size = 8;
 
@@ -87,9 +85,6 @@ export default function MilestoneMarker({
       );
     }
   };
-
-  // Vertical tick line connecting milestone to the phase area above
-  const tickTop = paddingTop + item.row * rowHeight + phaseAreaHeight + 2;
 
   const dateLabel = formatMilestoneDate(item.startDate);
 

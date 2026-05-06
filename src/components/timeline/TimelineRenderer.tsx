@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTimelineStore } from '@/lib/store';
 import { TimelineItem } from '@/lib/types';
 import { getTheme } from '@/lib/themes';
@@ -13,9 +13,52 @@ import MilestoneMarker from './MilestoneMarker';
 const TITLE_AREA = 56;       // Space for title + subtitle
 const HEADER_GAP = 28;       // Gap between subtitle and column headers
 const MILESTONE_ROW_HEIGHT = 24; // Dedicated height for milestone sub-row
+const BASE_WIDTH = 1200;
 
 interface TimelineRendererProps {
   svgRef?: React.RefObject<SVGSVGElement | null>;
+}
+
+// Assigns each row's phase/task items to stack lanes so overlapping ranges don't collide.
+// Returns a map: itemId → laneIndex, plus the number of lanes used per row.
+function computeStackLanes(items: TimelineItem[], rowCount: number, enabled: boolean) {
+  const laneByItem = new Map<string, number>();
+  const lanesPerRow: number[] = [];
+
+  for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+    const rowItems = items
+      .filter((i) => i.row === rowIndex && (i.type === 'phase' || i.type === 'task'))
+      .sort((a, b) => a.startDate.localeCompare(b.startDate));
+
+    if (!enabled) {
+      rowItems.forEach((it) => laneByItem.set(it.id, 0));
+      lanesPerRow.push(1);
+      continue;
+    }
+
+    // Greedy lane assignment. A lane is an array of {end} of the last item placed.
+    const laneEnds: string[] = [];
+    rowItems.forEach((it) => {
+      const start = it.startDate;
+      const end = it.endDate || it.startDate;
+      let placed = -1;
+      for (let i = 0; i < laneEnds.length; i++) {
+        if (start >= laneEnds[i]) {
+          placed = i;
+          laneEnds[i] = end;
+          break;
+        }
+      }
+      if (placed === -1) {
+        placed = laneEnds.length;
+        laneEnds.push(end);
+      }
+      laneByItem.set(it.id, placed);
+    });
+    lanesPerRow.push(Math.max(laneEnds.length, 1));
+  }
+
+  return { laneByItem, lanesPerRow };
 }
 
 export default function TimelineRenderer({ svgRef }: TimelineRendererProps) {
@@ -29,22 +72,41 @@ export default function TimelineRenderer({ svgRef }: TimelineRendererProps) {
   const theme = settings.theme === 'custom' ? customTheme : getTheme(settings.theme);
   const rowCount = Math.max(settings.rowLabels.length, 1);
 
-  // Row layout: each row has a phase area + a milestone sub-row
-  const phaseAreaHeight = theme.itemHeight + theme.itemGap;
-  const rowHeight = phaseAreaHeight + MILESTONE_ROW_HEIGHT + 4; // phase + milestone + gap
+  // ── Zoom-scaled width ──
+  const zoom = Math.max(0.5, Math.min(4, settings.zoom ?? 1));
+  const width = Math.round(BASE_WIDTH * zoom);
 
-  const paddingTop = TITLE_AREA + HEADER_GAP + 30; // title + gap + column header space
+  // ── Per-row stack lane computation ──
+  const stackEnabled = settings.layoutMode === 'stacked';
+  const { laneByItem, lanesPerRow } = useMemo(
+    () => computeStackLanes(items, rowCount, stackEnabled),
+    [items, rowCount, stackEnabled]
+  );
+
+  // ── Row geometry (per-row heights & tops) ──
+  const paddingTop = TITLE_AREA + HEADER_GAP + 30;
   const padding = { top: paddingTop, left: 160, right: 30, bottom: 40 };
-  const width = 1200;
-  const height = padding.top + rowCount * rowHeight + padding.bottom;
-  const contentWidth = width - padding.left - padding.right;
 
-  // Pre-compute which rows have milestones
-  const rowHasMilestones = useMemo(() => {
-    const set = new Set<number>();
-    items.filter(i => i.type === 'milestone').forEach(i => set.add(i.row));
-    return set;
-  }, [items]);
+  const baseItemHeight = theme.itemHeight;
+  const singleLaneArea = baseItemHeight + theme.itemGap; // original phase area
+  const laneStep = baseItemHeight + 4; // additional lane height per extra lane
+
+  const rowPhaseHeights = lanesPerRow.map(
+    (depth) => singleLaneArea + (depth - 1) * laneStep
+  );
+  const rowHeights = rowPhaseHeights.map((ph) => ph + MILESTONE_ROW_HEIGHT + 4);
+  const rowTops: number[] = [];
+  {
+    let acc = padding.top;
+    for (let i = 0; i < rowCount; i++) {
+      rowTops.push(acc);
+      acc += rowHeights[i];
+    }
+  }
+
+  const totalRowHeight = rowHeights.reduce((a, b) => a + b, 0);
+  const height = padding.top + totalRowHeight + padding.bottom;
+  const contentWidth = width - padding.left - padding.right;
 
   const handleItemClick = useCallback(
     (id: string) => { setSelectedItem(id); },
@@ -79,9 +141,12 @@ export default function TimelineRenderer({ svgRef }: TimelineRendererProps) {
     <svg
       ref={svgRef}
       viewBox={`0 0 ${width} ${height}`}
-      width="100%"
+      width={width}
+      height={height}
       style={{
-        maxWidth: width,
+        display: 'block',
+        width: `${width}px`,
+        height: `${height}px`,
         fontFamily: theme.fontFamily,
         backgroundColor: theme.colors.background,
       }}
@@ -131,8 +196,9 @@ export default function TimelineRenderer({ svgRef }: TimelineRendererProps) {
         height={height}
         padding={padding}
         theme={theme}
-        rowHeight={rowHeight}
-        milestoneRowHeight={MILESTONE_ROW_HEIGHT}
+        rowTops={rowTops}
+        rowHeights={rowHeights}
+        rowPhaseHeights={rowPhaseHeights}
       />
 
       {/* Click catcher for deselection */}
@@ -150,31 +216,32 @@ export default function TimelineRenderer({ svgRef }: TimelineRendererProps) {
         const rowPhases = phases.filter(item => item.row === rowIndex);
         if (rowPhases.length === 0) return null;
 
-        // Wrap each row's bars in a group — glow filter applied at group level
-        // so overlapping bars within a row share one glow pass
         return (
           <g key={`row-phases-${rowIndex}`} filter={effects.barGlow ? 'url(#glow-filter)' : undefined}>
-            {rowPhases.map((item) => (
-              <PhaseBar
-                key={item.id}
-                item={item}
-                theme={theme}
-                startDate={settings.startDate}
-                endDate={settings.endDate}
-                contentWidth={contentWidth}
-                paddingLeft={padding.left}
-                paddingTop={padding.top}
-                rowHeight={rowHeight}
-                isSelected={selectedItemId === item.id}
-                showProgress={settings.showProgress !== false}
-                onClick={() => handleItemClick(item.id)}
-                onDragUpdate={handleDragUpdate}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-                onDuplicate={handleDuplicate}
-                onRename={handleRename}
-              />
-            ))}
+            {rowPhases.map((item) => {
+              const lane = laneByItem.get(item.id) ?? 0;
+              const barY = rowTops[rowIndex] + 4 + lane * laneStep;
+              return (
+                <PhaseBar
+                  key={item.id}
+                  item={item}
+                  theme={theme}
+                  startDate={settings.startDate}
+                  endDate={settings.endDate}
+                  contentWidth={contentWidth}
+                  paddingLeft={padding.left}
+                  barY={barY}
+                  isSelected={selectedItemId === item.id}
+                  showProgress={settings.showProgress !== false}
+                  onClick={() => handleItemClick(item.id)}
+                  onDragUpdate={handleDragUpdate}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                  onDuplicate={handleDuplicate}
+                  onRename={handleRename}
+                />
+              );
+            })}
           </g>
         );
       })}
@@ -183,6 +250,9 @@ export default function TimelineRenderer({ svgRef }: TimelineRendererProps) {
       {settings.rowLabels.map((_, rowIndex) => {
         const rowMilestones = milestones.filter(item => item.row === rowIndex);
         if (rowMilestones.length === 0) return null;
+
+        const milestoneY = rowTops[rowIndex] + rowPhaseHeights[rowIndex] + 14;
+        const tickTop = rowTops[rowIndex] + rowPhaseHeights[rowIndex] + 2;
 
         return (
           <g key={`row-milestones-${rowIndex}`} filter={effects.milestoneGlow ? 'url(#milestone-glow)' : undefined}>
@@ -195,9 +265,8 @@ export default function TimelineRenderer({ svgRef }: TimelineRendererProps) {
                 endDate={settings.endDate}
                 contentWidth={contentWidth}
                 paddingLeft={padding.left}
-                paddingTop={padding.top}
-                rowHeight={rowHeight}
-                phaseAreaHeight={phaseAreaHeight}
+                milestoneY={milestoneY}
+                tickTop={tickTop}
                 isSelected={selectedItemId === item.id}
                 onClick={() => handleItemClick(item.id)}
               />

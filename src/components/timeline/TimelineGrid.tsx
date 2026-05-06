@@ -10,11 +10,15 @@ interface TimelineGridProps {
   height: number;
   padding: { top: number; left: number; right: number; bottom: number };
   theme: ThemeConfig;
-  rowHeight: number;
-  milestoneRowHeight: number;
+  /** Top Y of each row */
+  rowTops: number[];
+  /** Total height of each row (phase area + milestone sub-row) */
+  rowHeights: number[];
+  /** Phase area height of each row (may vary in stacked mode) */
+  rowPhaseHeights: number[];
 }
 
-export default function TimelineGrid({ width, height, padding, theme, rowHeight, milestoneRowHeight }: TimelineGridProps) {
+export default function TimelineGrid({ width, height, padding, theme, rowTops, rowHeights, rowPhaseHeights }: TimelineGridProps) {
   const settings = useTimelineStore((s) => s.settings);
   const contentWidth = width - padding.left - padding.right;
   const columns = getTimeColumns(settings.view, settings.startDate, settings.endDate);
@@ -100,8 +104,7 @@ export default function TimelineGrid({ width, height, padding, theme, rowHeight,
       {/* Row labels — centered vertically in the phase area of each row */}
       {settings.showLabels &&
         settings.rowLabels.map((label, i) => {
-          const phaseAreaHeight = theme.itemHeight + theme.itemGap;
-          const y = padding.top + i * rowHeight + phaseAreaHeight / 2;
+          const y = (rowTops[i] ?? padding.top) + (rowPhaseHeights[i] ?? 0) / 2;
           return (
             <text
               key={`row-${i}`}
@@ -121,7 +124,7 @@ export default function TimelineGrid({ width, height, padding, theme, rowHeight,
 
       {/* Horizontal row separators — at the bottom of each full row (below milestone area) */}
       {settings.rowLabels.map((_, i) => {
-        const y = padding.top + (i + 1) * rowHeight;
+        const y = (rowTops[i] ?? padding.top) + (rowHeights[i] ?? 0);
         return (
           <line
             key={`row-line-${i}`}

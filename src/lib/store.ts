@@ -95,6 +95,8 @@ const defaultSettings: TimelineSettings = {
   showProgress: false,
   rowLabels: ['Strategy', 'Design', 'Development', 'Launch'],
   eventLines: [],
+  zoom: 1,
+  layoutMode: 'default',
 };
 
 export const useTimelineStore = create<TimelineState>((set) => ({
